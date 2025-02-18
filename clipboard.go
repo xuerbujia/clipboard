@@ -5,6 +5,8 @@
 // Package clipboard read/write on clipboard
 package clipboard
 
+import "time"
+
 // ReadAll read string from clipboard
 func ReadAll() (string, error) {
 	return readAll()
@@ -13,6 +15,27 @@ func ReadAll() (string, error) {
 // WriteAll write string to clipboard
 func WriteAll(text string) error {
 	return writeAll(text)
+}
+
+// Monitor starts monitoring the clipboard for changes. When
+// a change is detected, it is sent over the channel.
+func Monitor(interval time.Duration, stopCh <-chan struct{}, changes chan<- string) error {
+	defer close(changes)
+
+	var currentValue string
+	var ticker = time.NewTicker(interval)
+	for {
+		select {
+		case <-stopCh:
+			return nil
+		case <-ticker.C:
+			newValue, _ := ReadAll()
+			if newValue != currentValue {
+				currentValue = newValue
+				changes <- currentValue
+			}
+		}
+	}
 }
 
 // Unsupported might be set true during clipboard init, to help callers decide
